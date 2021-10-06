@@ -1,0 +1,222 @@
+import pygame as pg
+import sys
+from easing_functions import *
+import time
+
+Screen = pg.display.set_mode((700, 700))
+Bg_surface = pg.image.load("Background.jpg").convert()
+Bg_surface = pg.transform.scale(Bg_surface, (700, 700))
+
+fps = pg.time.Clock()
+
+
+Rectangle_Surface = pg.Surface((200, 200))  # WHITE SURFACE RECTANGLE
+Rectangle_Surface_rect = Rectangle_Surface.get_rect(center=(350, 350))
+Rectangle_Surface.fill((255, 255, 255))
+
+Rectangle_Surface_2 = pg.Surface((1, 1))  # BLACK SURFACE RECTANGLE
+Rectangle_Surface_2_rect = Rectangle_Surface.get_rect(center=(350, 350))
+Rectangle_Surface_2.fill((0, 0, 0))
+
+Key = pg.image.load("Vector_logo.jpg").convert()
+Key = pg.transform.scale(Key, (400, 200))
+
+# Rectangle_Surface = pg.transform.scale(Rectangle_Surface, (200, 100))
+
+
+class Animations:
+    frame = 0  # INCREASE THE VALUE OF FRAME IN MAIN LOOP
+    frame_value = 1
+    tempvar = []  # for storing the old x,y pos as constants and h,w as constants
+    reached_max = 0
+
+    def __init__(self, surface, surface_rect):
+        self.surface = surface
+        self.surface_rect = surface_rect
+        Animations.frame += Animations.frame_value
+
+    def EASE_OUT(
+        self,
+        Action: str,
+        Time: int = 1,
+        param1: int = 0,
+        param2: int = 0,
+        stay_in_pos: bool = False,
+    ):
+        __ease_out = QuadEaseOut()
+
+        self.action = Action
+        self.stay_in_pos = stay_in_pos
+
+        Animations.frame_value = Time
+
+        if self.stay_in_pos:
+            if self.stay_in_pos and not len(Animations.tempvar):
+                Animations.tempvar.append(self.surface_rect.centerx)
+                Animations.tempvar.append(self.surface_rect.centery)
+                old_x_pos = Animations.tempvar[0]
+                old_y_pos = Animations.tempvar[1]
+            else:
+                old_x_pos = Animations.tempvar[0]
+                old_y_pos = Animations.tempvar[1]
+
+        self.easingAmount = __ease_out(Animations.frame * 0.01)  # easing amount
+        self.easingAmount = min(1, abs(self.easingAmount))
+        if (
+            self.easingAmount >= 0.99
+        ):  # BUG FIX SO EASING DOESNT GET REDUCED , ONLY INCREASES
+            self.easingAmount = 1
+            Animations.reached_max = 1
+
+        if "m" == self.action.lower()[0]:  # Basically means move
+            self.xpos = param1
+            self.ypos = param2
+            if self.xpos != 0 and self.ypos != 0:  # For movement along x and y axis
+                if (
+                    self.surface_rect.centerx < self.xpos
+                    and self.surface_rect.centery < self.ypos
+                ):
+                    self.surface_rect.centerx = self.xpos * self.easingAmount
+                    self.surface_rect.centery = self.ypos * self.easingAmount
+                    return self.surface_rect
+
+                elif (
+                    self.surface_rect.centerx < self.xpos
+                    and self.surface_rect.centery > self.ypos
+                ):
+                    self.surface_rect.centerx = self.xpos * self.easingAmount
+                    self.surface_rect.centery = self.ypos * self.easingAmount * -1
+                    return self.surface_rect
+
+                elif (
+                    self.surface_rect.centerx > self.xpos
+                    and self.surface_rect.centery < self.ypos
+                ):
+                    self.surface_rect.centerx = self.xpos * self.easingAmount * -1
+                    self.surface_rect.centery = self.ypos * self.easingAmount
+                    return self.surface_rect
+
+                elif (
+                    self.surface_rect.centerx > self.xpos
+                    and self.surface_rect.centery > self.ypos
+                ):
+                    self.surface_rect.centerx = self.xpos * self.easingAmount * -1
+                    self.surface_rect.centery = self.ypos * self.easingAmount * -1
+                    return self.surface_rect
+
+                else:
+                    return self.surface_rect
+
+            elif self.xpos != 0:  # For movement along only x axis
+
+                if self.surface_rect.centerx < self.xpos:
+                    self.surface_rect.centerx = self.xpos * self.easingAmount
+                    return self.surface_rect
+
+                elif self.surface_rect.centerx > self.xpos:
+                    self.surface_rect.centerx = self.xpos * self.easingAmount * -1
+                    return self.surface_rect
+
+                else:
+                    return self.surface_rect
+
+            elif self.ypos != 0:  # For movement along only y axis
+
+                if self.surface_rect.centery < self.ypos:
+                    self.surface_rect.centery = self.ypos * self.easingAmount
+                    # print(self.surface_rect.centery, self.ypos, self.easingAmount)
+                    return self.surface_rect
+
+                elif self.surface_rect.centery > self.ypos:
+                    self.surface_rect.centery = self.ypos * self.easingAmount * -1
+                    return self.surface_rect
+
+                else:
+                    return self.surface_rect
+            else:
+                pass
+
+        elif "s" == self.action.lower()[0]:  # Basically means scale/size
+
+            self.h = param1
+            self.w = param2
+            if len(Animations.tempvar) == 2:
+                Animations.tempvar.append(self.h)
+                Animations.tempvar.append(self.w)
+                Animations.tempvar.append(self.surface.get_height())
+                Animations.tempvar.append(self.surface.get_width())
+                self.new_height = Animations.tempvar[2]
+                self.new_width = Animations.tempvar[3]
+                self.old_height = Animations.tempvar[4]
+                self.old_width = Animations.tempvar[5]
+            elif stay_in_pos:  # Fix for some strange bug idk :kek:
+                self.new_height = Animations.tempvar[2]
+                self.new_width = Animations.tempvar[3]
+                self.old_height = Animations.tempvar[4]
+                self.old_width = Animations.tempvar[5]
+
+            if self.stay_in_pos:
+                if (
+                    self.surface_rect.centerx
+                    >= old_x_pos - (abs(self.old_height - self.new_height) / 2)
+                    and not Animations.reached_max
+                ):
+                    self.surface_rect.centerx -= self.easingAmount
+
+                if (
+                    self.surface_rect.centery
+                    >= old_x_pos - (abs(self.old_width - self.new_width) / 2)
+                    and not Animations.reached_max
+                ):
+                    self.surface_rect.centery -= self.easingAmount
+
+            if (
+                self.h and self.w
+            ) > 0 and not Animations.reached_max:  # Scales along x axis and y axis
+                self.surface = pg.transform.scale(
+                    self.surface,
+                    (int(self.easingAmount * self.h), int(self.easingAmount * self.w)),
+                )
+                return self.surface, self.surface_rect
+            else:
+                return self.surface, self.surface_rect
+
+
+while True:
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            pg.quit()
+            sys.exit()
+        if event.type == pg.KEYDOWN:
+            if event.key == pg.K_ESCAPE:
+                pg.quit()
+                sys.exit()
+
+    Screen.blit(Bg_surface, (0, 0))
+
+    # FIRST INSTANCE
+    Rectangle_Surface, Rectangle_Surface_rect = Animations(
+        Rectangle_Surface, Rectangle_Surface_rect
+    ).EASE_OUT("Scale", 1, 400, 400, True)
+    Rectangle_Surface.fill((255, 255, 255))
+    Screen.blit(Rectangle_Surface, Rectangle_Surface_rect)  # WHITE SURFACE
+
+    # SECOND INSTANCE
+    Rectangle_Surface_2, Rectangle_Surface_2_rect = Animations(
+        Rectangle_Surface_2, Rectangle_Surface_2_rect
+    ).EASE_OUT("Scale", 0.00001, 400, 400, True)
+
+    Screen.blit(Rectangle_Surface_2, Rectangle_Surface_2_rect)  # BLACK SURFACE
+
+    fps.tick(60)
+    pg.display.update()
+    
+"""
+
+    pg.draw.rect(
+        Rectangle_Surface,
+        pg.Color("purple"),
+        (0, 0, Rectangle_Surface.get_height(), Rectangle_Surface.get_width()),
+    )
+
+"""
